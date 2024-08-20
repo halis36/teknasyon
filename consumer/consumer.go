@@ -3,27 +3,30 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"github.com/IBM/sarama" // Güncellenmiş kütüphane
 	_ "github.com/go-sql-driver/mysql"
 	"log"
+	"strconv"
 )
 
 const (
 	kafkaBroker = "172.20.0.3:9093"
-	//kafkaBroker = "kafka:9092" // Kafka broker adresi
-	//	kafkaBroker = "localhost:9092"                                  // Kafka broker adresi
-	kafkaTopic = "wallet-events"                               // Kafka topic adı
-	dbConnStr  = "user:password@tcp(localhost:3306)/teknasyon" // MySQL bağlantı dizesi
+	kafkaTopic  = "wallet-events"
+	dbConnStr   = "user:password@tcp(localhost:3306)/teknasyon"
 )
 
-type Transaction struct {
-	TransactionID string  `json:"transaction_id"`
-	Amount        float64 `json:"amount"`
-	Currency      string  `json:"currency"`
-	UserID        string  `json:"user_id"`
-	Timestamp     string  `json:"timestamp"`
-	Wallet        string  `json:"wallet"`
+type Event struct {
+	App  string `json:"app"`
+	Type string `json:"type"`
+	Time string `json:"time"`
+	Meta struct {
+		User string `json:"user"`
+	} `json:"meta"`
+	Wallet     string `json:"wallet"`
+	Attributes struct {
+		Amount   string `json:"amount"`
+		Currency string `json:"currency"`
+	} `json:"attributes"`
 }
 
 func main() {
@@ -51,15 +54,14 @@ func main() {
 
 		go func(pc sarama.PartitionConsumer) {
 			for msg := range pc.Messages() {
-				var transaction Transaction
-				if err := json.Unmarshal(msg.Value, &transaction); err != nil {
+				var events struct {
+					Events []Event `json:"events"`
+				}
+				if err := json.Unmarshal(msg.Value, &events); err != nil {
 					log.Printf("Failed to unmarshal message: %v", err)
 					continue
 				}
 
-				fmt.Printf("Received transaction: %+v\n", transaction)
-
-				// Veritabanına kaydetme işlemi
 				db, err := sql.Open("mysql", dbConnStr)
 				if err != nil {
 					log.Printf("Failed to connect to database: %s", err)
@@ -67,15 +69,39 @@ func main() {
 				}
 				defer db.Close()
 
-				_, err = db.Exec("INSERT INTO transactions (transaction_id, amount, currency, user_id, wallet, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
-					transaction.TransactionID, transaction.Amount, transaction.Currency, transaction.UserID, transaction.Wallet, transaction.Timestamp)
-				if err != nil {
-					log.Printf("Failed to insert transaction into database: %v", err)
+				for _, event := range events.Events {
+					amount, err := parseFloat(event.Attributes.Amount)
+					if err != nil {
+						log.Printf("Failed to parse amount: %v", err)
+						continue
+					}
+
+					var updateQuery string
+					var updateArgs []interface{}
+
+					if event.Type == "BALANCE_INCREASE" {
+						updateQuery = "UPDATE transactions SET amount = amount + ? WHERE wallet = ? AND currency = ?"
+						updateArgs = []interface{}{amount, event.Wallet, event.Attributes.Currency}
+					} else if event.Type == "BALANCE_DECREASE" {
+						updateQuery = "UPDATE transactions SET amount = amount - ? WHERE wallet = ? AND currency = ?"
+						updateArgs = []interface{}{amount, event.Wallet, event.Attributes.Currency}
+					} else {
+						log.Printf("Unknown event type: %s", event.Type)
+						continue
+					}
+
+					_, err = db.Exec(updateQuery, updateArgs...)
+					if err != nil {
+						log.Printf("Failed to update balance in database: %v", err)
+					}
 				}
 			}
 		}(pc)
 	}
 
-	// Uygulamanın sonlandırılmasını bekle
 	select {}
+}
+
+func parseFloat(s string) (float64, error) {
+	return strconv.ParseFloat(s, 64)
 }

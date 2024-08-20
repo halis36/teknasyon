@@ -1,0 +1,49 @@
+{
+	"info": {
+		"_postman_id": "cd2d6a66-c4b9-4dd3-86f4-24fe27e94c90",
+		"name": "Golang",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "8482686"
+	},
+	"item": [
+		{
+			"name": "Post",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"events\": [\r\n        {\r\n            \"app\": \"01HPMTX8916FF4ABFBDESX1AGH\",\r\n            \"type\": \"BALANCE_INCREASE\",\r\n            \"time\": \"2024-02-12T11:50:40.280Z\",\r\n            \"meta\": {\r\n              \"user\": \"01HPMV114ZE7Z54M6XV8H4EEMB\"\r\n            },\r\n            \"wallet\": \"01HPMV01XPAXCG242W7SZWD0S5\",\r\n            \"attributes\": {\r\n                \"amount\": \"33.20\",\r\n                \"currency\": \"TRY\"\r\n            }\r\n        },\r\n        {\r\n            \"app\": \"01HPMTX8916FF4ABFBDESX1AGH\",\r\n            \"type\": \"BALANCE_DECREASE\",\r\n            \"time\": \"2024-02-12T11:50:40.281Z\",\r\n            \"meta\": {\r\n              \"user\": \"01HPMV114ZE7Z54M6XV8H4EEMB\"\r\n            },\r\n            \"wallet\": \"01HPMV01XPAXCG242W7SZWD0S5\",\r\n            \"attributes\": {\r\n                \"amount\": \"3.10\",\r\n                \"currency\": \"TRY\"\r\n            }\r\n        }\r\n    ]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8080",
+					"host": [
+						"localhost"
+					],
+					"port": "8080"
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:8080",
+					"host": [
+						"localhost"
+					],
+					"port": "8080"
+				}
+			},
+			"response": []
+		}
+	]
+}
